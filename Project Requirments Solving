@@ -1,0 +1,306 @@
+--6. Formula?i în limbaj natural o problem? pe care s? o rezolva?i folosind un subprogram stocat care s? 
+--utilizeze dou? tipuri de colec?ie studiate. Apela?i subprogramul.
+
+---Cerinta: Afisati activitatile la care participa un copil si gardieni cu care desfasoara activitati copilul respectiv,
+--al carui id este date de la tastatura. Calculati media punctajelor pe toate participarile din orfelinatul in care se afla orfanul si precizati daca punctajul sau este sau nu peste acea medie
+CREATE OR REPLACE PROCEDURE afiseaza_ag (v_id Orfani_tdo.id_orfan%TYPE) AS
+    TYPE activ_indexat IS TABLE OF NUMBER;
+    TYPE tablou_imbricat IS TABLE  OF NUMBER(3) INDEX BY BINARY_INTEGER ;
+     cod_gd tablou_imbricat;
+     cod_activ activ_indexat := activ_indexat();
+     numar_participari NUMBER;
+     medie_totala NUMBER;
+     rezultat NUMBER;
+     
+    
+BEGIN
+
+
+    SELECT COUNT(*) INTO numar_participari
+    FROM participa_tdo p JOIN orfani_tdo o ON (p.id_orfan =  o.id_orfan)
+                        JOIN orfelinat_tdo orf ON (orf.id_orfelinat = o.id_orfelinat)
+    WHERE orf.id_orfelinat = (SELECT id_orfelinat FROM orfani_tdo  WHERE id_orfan = v_id);
+    IF numar_participari > 0 THEN
+        SELECT SUM(act.puncte) INTO medie_totala
+        FROM participa_tdo p JOIN activitati_tdo act ON (p.id_activ = act.id_activ)
+                             JOIN orfani_tdo o ON (p.id_orfan =  o.id_orfan)
+                             JOIN orfelinat_tdo orf ON (orf.id_orfelinat = o.id_orfelinat)
+        WHERE (p.id_orfan IS NOT NULL OR p.id_gardian IS NOT NULL) AND orf.id_orfelinat = (SELECT id_orfelinat FROM orfani_tdo WHERE id_orfan = v_id);
+        
+        medie_totala := medie_totala / numar_participari;
+        
+        DBMS_OUTPUT.PUT_LINE('Media totala a punctajelor realizate in urma desfasurarii activitatilor inregistrate este ' || medie_totala );
+        
+        DBMS_OUTPUT.PUT_LINE ('Orfanul cu id-ul ' || v_id || ' a participat la activitatile: ');    
+        
+        SELECT  DISTINCT id_activ  BULK COLLECT  INTO cod_activ
+        FROM Participa_tdo 
+        WHERE v_id = id_orfan;
+        
+        SELECT DISTINCT id_gardian BULK COLLECT  INTO cod_gd
+        FROM Participa_tdo 
+        WHERE v_id = id_orfan;
+        
+      FOr i in cod_activ.FIRST .. cod_activ.LAST LOOP
+        DBMS_OUTPUT.PUT_LINE ('Activitatea ' || cod_activ(i) );
+           For activitate IN ( SELECT  denumire, puncte 
+            FROM Activitati_tdo 
+            WHERE id_activ = cod_activ(i)) LOOP
+            DBMS_OUTPUT.PUT_LINE ('Denumire: ' || activitate.denumire || ', punctaj: ' || activitate.puncte);
+        END LOOP;
+    END LOOP;
+        DBMS_OUTPUT.PUT_LINE('Alaturi de urmatorii gardieni: ');
+        For j in cod_gd.FIRST .. cod_gd.LAST LOOP
+            DBMS_OUTPUT.PUT_LINE (' Gardianul cu codul ' || cod_gd(j) || ' si numele: ' );
+            FOR gardian  IN (SELECT  nume || ' ' || prenume name
+            FROM Gardian_tdo
+            WHERE id_gardian = cod_gd(j))LOOP
+             DBMS_OUTPUT.PUT(gardian.name);
+             
+        END LOOP;
+        DBMS_OUTPUT.NEW_LINE;
+    END LOOP;   
+        SELECT SUM(act.puncte) INTO rezultat
+        FROM participa_tdo p JOIN  Activitati_tdo act ON (p.id_activ = act.id_activ)
+        WHERE p.id_orfan =  v_id;
+        
+        IF rezultat < medie_totala THEN 
+            dbms_output.put_line(' Orfanul cu id-ul ' || v_id || '  a obtinut punctajul ' || rezultat || ' care este mai mic decat media ' || medie_totala );
+        ELSE 
+            dbms_output.put_line(' Orfanul cu id-ul ' || v_id || '  a obtinut punctajul ' || rezultat || ' care este peste media ' || medie_totala );
+        END IF;
+        
+        UPDATE  orfani_tdo
+        SET punctaj_total = rezultat
+        WHERE id_orfan = v_id; 
+        
+    ELSE 
+        dbms_output.put_line('Orfanul cu id-ul ' || v_id || ' nu a participat la nicio activitate pana acum');
+    END IF;
+    EXCEPTION 
+     WHEN NO_DATA_FOUND THEN
+        dbms_output.put_line('Nu avem in baza de date id-ul '  || v_id);
+END;
+/
+BEGIN
+ afiseaza_ag(3000);   
+END;
+ SELECT * FROM orfani_tdo;   
+    ROLLBACK;
+
+--7. Formula?i în limbaj natural o problem? pe care s? o rezolva?i folosind un subprogram stocat care s? 
+--utilizeze un tip de cursor studiat. Apela?i subprogramul.
+--Cerinta: Afisati suma medie a salariilor (calculate cu tot cu comision) lunare din fiecare orfelinat, iar pentru fiecare 
+--job determinati o lista a salariilor castigate si a persoanelor care le castiga de la cel mai mare la cel mai mic.(indiferent de orfelinatul in care lucreaza)
+SELECT * FROM angajat_tdo;
+create or replace PROCEDURE ex7 AS
+    CURSOR c (cod_orfelinat Orfelinat_tdo.id_orfelinat%TYPE) IS
+                                                             SELECT ang.nume, ang.prenume, ang.tip_angajat, ang.salariu, ang.comision, orf.nume, orf.id_orfelinat
+                                                             FROM Orfelinat_tdo orf, Angajat_tdo ang
+                                                             WHERE orf.id_orfelinat = cod_orfelinat AND orf.id_orfelinat = ang.id_orfelinat
+                                                             ORDER BY ang.salariu DESC; 
+                                                             
+  nr_orf NUMBER;
+  fname Angajat_tdo.prenume%TYPE;
+  lname Angajat_tdo.nume%TYPE;
+  sal   Angajat_tdo.salariu%TYPE;
+  TYPE orfelinate IS TABLE OF Orfelinat_tdo.id_orfelinat%TYPE;
+  nr_orfelinate orfelinate := orfelinate();
+  TYPE joburi IS TABLE OF Angajat_tdo.tip_angajat%TYPE;
+  jobs joburi := joburi();
+  TYPE fara_ang IS TABLE OF NUMBER INDEX BY PLS_INTEGER;
+  orf_fara_ang fara_ang ;
+  --TYPE tablou_sal IS TABLE OF Angajat_tdo.salariu%TYPE;
+  salarii_tot NUMBER := 0;
+  contor NUMBER := 0;
+  nr_ang NUMBER := 0;
+  nr_joburi NUMBER := 0;
+  val_medie NUMBER; 
+  sal_ang NUMBER := 0;
+
+BEGIN
+    SELECT COUNT(*) INTO nr_orf
+    FROM Orfelinat_tdo;
+    nr_orfelinate.EXTEND(nr_orf);
+    
+    SELECT id_orfelinat BULK COLLECT INTO nr_orfelinate
+    FROM Orfelinat_tdo;
+  
+    SELECT  COUNT(DISTINCT tip_angajat) INTO nr_joburi
+    FROM angajat_tdo;
+ 
+    jobs.EXTEND(nr_joburi);
+    SELECT DISTINCT tip_angajat BULK COLLECT INTO jobs
+    FROM   angajat_tdo;
+    
+    
+    
+   FOR i IN nr_orfelinate.FIRST ..nr_orfelinate.LAST LOOP
+     SELECT COUNT(*) INTO nr_ang
+     FROM angajat_tdo
+     WHERE  id_orfelinat = nr_orfelinate(i);
+     IF nr_ang <> 0 THEN
+         SELECT  (SUM(salariu) + SUM (salariu * comision))/ nr_ang INTO salarii_tot
+        FROM angajat_tdo WHERE id_orfelinat = nr_orfelinate(i)
+        GROUP BY id_orfelinat;
+                DBMS_OUTPUT.PUT_LINE ('Suma medie lunara pentru plata angajatilor din orfelinatul cu id-ul ' || nr_orfelinate(i) || ' este ' || salarii_tot);
+    ELSE   
+          DBMS_OUTPUT.PUT_LINE ('Nu avem angajati stocati in baza de date pentru orfelinatul cu id-ul  '  || nr_orfelinate(i));
+     END IF;
+         END LOOP;
+         
+   FOR i in jobs.FIRST .. jobs.LAST LOOP
+   DBMS_OUTPUT.PUT_LINE('Pentru jobul cu numele ' || jobs(i) || ' lista dupa salariu ');
+    FOR a IN (SELECT id_angajat, id_orfelinat, nume || ' ' || prenume np, salariu  
+                            FROM angajat_tdo 
+                            WHERE tip_angajat = jobs(i) ORDER BY salariu DESC) LOOP
+        DBMS_OUTPUT.PUT('Id: ' || a.id_angajat || ' care lucreaza in orfelinatul ' || a.id_orfelinat || ' cu numele ' || a.np ||' si salariul ' || a.salariu  );
+        DBMS_OUTPUT.NEW_LINE;
+    END LOOP;
+    DBMS_OUTPUT.NEW_LINE;
+   END LOOP;
+
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN 
+         FOR i IN orf_fara_ang.FIRST .. orf_fara_ang.LAST LOOP
+          DBMS_OUTPUT.PUT_LINE ('Nu avem angajati stocati in baza de date pentru orfelinatul dat  ' );
+          END LOOP;
+
+END;
+
+EXECUTE ex7;
+--8. Formula?i în limbaj natural o problem? pe care s? o rezolva?i folosind un subprogram stocat de tip 
+--func?ie care s? utilizeze într-o singur? comand? SQL 3 dintre tabelele definite. Trata?i toate excep?iile 
+--care pot ap?rea. Apela?i subprogramul astfel încât s? eviden?ia?i toate cazurile tratate
+
+--Cerinta: Creati o functie care sa afiseze numarul de cereri de adoptie realizate din orfelinatul
+--dintr-un oras dat, realizate intre o anumita data. Afisati de asemenea adresa la care se afla orfelinatul din orasul dat ca parametru.
+ CREATE OR REPLACE FUNCTION cereri_adoptie_din_orasul_x 
+                           (nume_oras Locatie_tdo.oras%TYPE, data_inceput DATE, data_sfarsit DATE)
+ RETURN NUMBER IS 
+    numar_cereri NUMBER := 0;
+    nr_orase NUMBER;
+    adresa_orf Locatie_tdo.adresa%TYPE;
+    TYPE tablou IS TABLE OF Locatie_tdo.id_locatie%TYPE;
+    cod_locatie tablou := tablou();
+ 
+ BEGIN
+    SELECT COUNT(*) INTO  nr_orase 
+    FROM Locatie_tdo 
+    WHERE nume_oras = oras;
+    IF nr_orase = 0 THEN 
+        DBMS_OUTPUT.PUT_LINE (-20000, 'Nu exista orasul cu numele dat');
+    ELSE
+    cod_locatie.EXTEND(nr_orase);
+    SELECT id_locatie BULK COLLECT INTO  cod_locatie 
+    FROM Locatie_tdo 
+    WHERE nume_oras = oras;
+    FOR i in cod_locatie.FIRST .. cod_locatie.LAST LOOP
+        
+        SELECT COUNT(cr.id_cerere_adoptie), loc.adresa INTO numar_cereri, adresa_orf
+        FROM  cereri_realizate cr JOIN cerere_adoptie c ON (c.id_cerere_adoptie = cr.id_cerere_adoptie)
+                              JOIN orfelinat_tdo orf ON (cr.id_orfelinat = orf.id_orfelinat)
+                              JOIN locatie_tdo loc ON (orf.id_locatie = loc.id_locatie)
+        WHERE  orf.id_locatie = cod_locatie(i)  AND data_inceput <= data_cerere AND  data_cerere <= data_sfarsit
+        group by loc.adresa;
+        
+        IF numar_cereri <> 0 THEN EXIT; END IF;
+        END LOOP;
+        DBMS_OUTPUT.PUT_LINE('Orfelinatul din orasul ' || nume_oras ||' are urmatoarea adresa: ' || adresa_orf );
+    END IF;
+    RETURN numar_cereri;
+    
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE (-20000, 'Nu exista orasul cu numele dat');
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20001,'Alta eroare!');
+ END;
+ /
+ BEGIN
+    DBMS_OUTPUT.PUT_LINE('In orasul Craiova din data de 10.MAR.2021 pana in data de 01.JUN.2021 au fost confirmate  urmatorul numar de cereri: ' ||  cereri_adoptie_din_orasul_x('Craiova', TO_DATE('10-MAR-2021','dd-MON-yyyy'), TO_DATE('01-JUN-2021','dd-MON-yyyy')));
+      EXCEPTION 
+    WHEN OTHERS THEN 
+    dbms_output.put_line('cod = '|| sqlcode || '  ' || sqlerrm);
+ END;
+
+    ----
+
+--9. Detereminati copiii  care au participat la desfasurarea activitatii x date ca parametru 
+-- In cazul in care activitatea x este singura activitate a copilului a se precizeze numele gardianului, numele Orfelinatului si id-ul, altfel sa se afiseze doar suma punctajelor obtinute
+--Care este numarul participantilor?
+
+
+create or replace PROCEDURE info_activitati(nume_activ1 activitati_tdo.denumire%TYPE)
+AS
+    suma_puncte NUMBER;
+    nr_activ NUMBER;
+    TYPE  tablou IS TABLE OF Orfani_tdo.id_orfan%TYPE;
+    cod_participant tablou := tablou();
+    TYPE  tablou_gardian IS TABLE OF gardian_tdo.nume%TYPE INDEX BY BINARY_INTEGER;
+    nume_gardieni tablou_gardian;
+    nr_participanti NUMBER;
+    verificare NUMBER := 0;
+
+    
+BEGIN
+    SELECT COUNT(id_activ) INTO verificare
+    FROM participa_tdo
+    WHERE id_activ = (SELECT id_activ FROM activitati_tdo WHERE denumire = nume_activ1);
+    IF verificare = 0 THEN 
+             dbms_output.put_line ( ' Nu avem inregistrata in baza de date/nu avem participari la  activitatea cu denumirea ' || nume_activ1);
+
+    ELSE
+     SELECT  COUNT(DISTINCT  id_orfan) INTO nr_participanti
+        FROM Participa_tdo
+        WHERE id_activ IN (SELECT id_activ FROM Activitati_tdo WHERE denumire = nume_activ1)  AND id_orfan IS NOT NULL;
+    
+    cod_participant.EXTEND(nr_participanti);
+    
+    SELECT DISTINCT  id_orfan BULK COLLECT INTO cod_participant
+        FROM Participa_tdo
+        WHERE id_activ IN (SELECT id_activ FROM Activitati_tdo WHERE denumire = nume_activ1)  AND id_orfan IS NOT NULL;
+   DBMS_OUTPUT.PUt_LINE(' Avem  ' || nr_participanti || ' copii care au participat la  ' || nume_activ1 );
+     FOR i in cod_participant.FIRST .. cod_participant.LAST LOOP
+        dbms_output.put_line('Informatiile cerute despre orfanul cu id-ul ' || cod_participant(i) || ': ');
+       SELECT COUNT(*) INTO nr_activ
+       FROM Participa_tdo 
+       WHERE id_orfan =  cod_participant(i);
+       IF nr_activ = 1 THEN
+        FOR info in ( SELECT DISTINCT t2.nume_o ||' ' || t2.prenume_o name, ing.nume  || ' ' || ing.prenume gardian, orf.nume orn, t2.id_orfelinat cod 
+                    FROM participa_tdo t1
+                    JOIN Orfani_tdo t2 ON(t2.id_orfan=t1.id_orfan)
+                    JOIN Activitati_tdo activ ON(activ.id_activ=t1.id_activ)
+                    JOIN Gardian_tdo ing ON (ing.id_gardian=t1.id_gardian)
+                    JOIN Orfelinat_tdo orf ON(t2.id_orfelinat=orf.id_orfelinat) 
+                    WHERE t2.id_orfan =  cod_participant(i) ) LOOP
+                   
+                    DBMS_OUTPUT.PUt_LINE('------------------------------------------------------------------------------------ '  );
+                    DBMS_OUTPUT.PUt_LINE(' Nume orfan: ' || info.name );
+                    DBMS_OUTPUT.PUt_LINE(' Id Orfelinat si Nume: ' || info.cod  || ', ' || info.orn);
+                    DBMS_OUTPUT.PUt_LINE( ' Nume gardian: ' ||  info.gardian );
+                    DBMS_OUTPUT.PUt_LINE('------------------------------------------------------------------------------------ '  );
+                   
+                    
+
+        END LOOP; 
+        ELSE 
+            SELECT SUM(activ.puncte) INTO suma_puncte
+            FROM activitati_tdo activ JOIN participa_tdo part ON (activ.id_activ=part.id_activ)
+            WHERE part.id_orfan = cod_participant(i);
+          DBMS_OUTPUT.PUt_LINE(' Punctajul adunat in urma participarii la diferite activitati este: ' || suma_puncte);
+
+     END IF;
+     END LOOP;
+     END IF;
+     EXCEPTION
+        WHEN TOO_MANY_ROWS THEN
+             DBMS_OUTPUT.PUT (' Avem mai multe activitati cu numele  ' || nume_activ1);
+END;
+/
+EXECUTE  info_activitati('sah');
+EXECUTE  info_activitati('canotaj');
+EXECUTE  info_activitati('sa');
+
+
+--SELECT * FROM activitati_tdo participa_tdo;
