@@ -1,0 +1,193 @@
+--- 14.) Creati un pachet care va contine 2 functii si 2 proceduri:
+        --- o functie care intoarce pentru fiecare job o singura persoana care castiga cel mai mic salariu
+        --- O procedura care va mari salariul sau comisionul angajatilor de la functia anterioara astfel: 
+                ---angajatilor cu mai putin de  5 ani vechime  vom mari salariile cu 5% 
+                --- celor cu peste 5 ani vechime vom  aduaga/mari cu 0.1 comisionul si salariul cu 5% .
+       ----A doua functie va afisa cererile existente dintr-un interval dat de timp
+       ---- Se va crea o procedura care daca intervalul ales este mai >= de 3 ani va sterge aceste cereri deoarece sunt prea vechi pentru a mai putea fi procesate
+       ---- daca intervalul este mai < 3 doar se vor afisa cateva informatii despre aceste cereri (numele perintilor si data exacta )
+       -- OBS: Se pot crea alte proceduri/functii ajutatoare.
+        
+CREATE OR REPLACE PACKAGE cerinta14_proiect_tdo  IS
+    TYPE cereri IS TABLE OF cerere_adoptie.id_cerere_adoptie%TYPE;
+    
+    TYPE colectie IS TABLE OF angajat_tdo.id_angajat%TYPE;
+    
+   
+
+    FUNCTION lista_salarii_ang RETURN  colectie;
+    
+
+    PROCEDURE vechime_ang;
+    
+     FUNCTION cereri_adoptie_tdo
+                           (data_inceput DATE, data_sfarsit DATE) RETURN cereri;
+                           
+    PROCEDURE status (cod cerere_adoptie.id_cerere_adoptie%TYPE);
+    
+    PROCEDURE sterge_cereri(cod cerere_adoptie.id_cerere_adoptie%TYPE);
+                           
+    PROCEDURE alegere(data_inceput DATE, data_sfarsit DATE);
+END;
+
+
+CREATE OR REPLACE PACKAGE BODY cerinta14_proiect_tdo   IS
+    
+        FUNCTION lista_salarii_ang  RETURN  colectie IS
+            coduri_ang colectie := colectie();
+            TYPE joburi IS TABLE OF Angajat_tdo.tip_angajat%TYPE;
+            jobs joburi := joburi();
+            nr_joburi NUMBER;
+        BEGIN
+            SELECT  COUNT(DISTINCT tip_angajat) INTO nr_joburi
+            FROM angajat_tdo;
+         
+            jobs.EXTEND(nr_joburi);
+            
+            SELECT DISTINCT tip_angajat BULK COLLECT INTO jobs
+            FROM   angajat_tdo;
+            
+            coduri_ang.EXTEND(nr_joburi);
+            
+            FOR i in jobs.FIRST .. jobs.LAST LOOP
+                FOR ang IN (SELECT id_angajat, salariu  
+                            FROM angajat_tdo 
+                            WHERE tip_angajat = jobs(i) ORDER BY salariu ASC) LOOP
+                            coduri_ang(i) := ang.id_angajat;
+                            EXIT;
+                END LOOP;
+            END LOOP;
+     return coduri_ang;
+
+        END lista_salarii_ang;
+
+   PROCEDURE vechime_ang IS
+        --coduri_ang_cu_vechime colectie := colectie();
+        cod_ang angajat_tdo.id_angajat%TYPE;
+        cod_ang2 angajat_tdo.id_angajat%TYPE;
+        an DATE;
+        nr  NUMBER;
+    BEGIN   
+        SELECT  COUNT(DISTINCT tip_angajat) INTO nr
+        FROM angajat_tdo;
+        --lista_init.EXTEND(nr);
+       -- FOR i in 1 .. nr LOOP
+
+         FOR i in 1 .. nr LOOP
+            cod_ang := lista_salarii_ang()(i);
+            SELECT id_angajat, data_ang INTO cod_ang2, an 
+            FROM angajat_tdo
+            WHERE id_angajat = cod_ang;
+            IF (EXTRACT(YEAR FROM SYSDATE) - EXTRACT(YEAR FROM an)) > 5 THEN
+               UPDATE angajat_tdo
+               SET salariu = salariu + (salariu * 5)/100, comision = comision + 0.1
+               WHERE id_angajat = cod_ang2;
+           END IF;
+           IF (EXTRACT(YEAR FROM SYSDATE) - EXTRACT(YEAR FROM an))  <= 5 THEN 
+              UPDATE angajat_tdo
+              SET salariu = salariu + (salariu * 5)/100
+              WHERE id_angajat = cod_ang2;
+          END IF;
+        END LOOP;
+        dbms_output.put_line(' Salariile au fost modificate cu succes ');
+    END vechime_ang;
+
+    FUNCTION cereri_adoptie_tdo
+                           (data_inceput DATE, data_sfarsit DATE) RETURN cereri IS
+         cereri_adp cereri := cereri();
+         numar_cereri NUMBER := 0;                           
+    BEGIN
+        SELECT COUNT(id_cerere_adoptie )INTO numar_cereri
+        FROM cerere_adoptie
+        WHERE data_cerere >= data_inceput AND data_cerere <= data_sfarsit;
+        
+        cereri_adp.EXTEND(numar_cereri);
+        
+        SELECT id_cerere_adoptie BULK COLLECT INTO cereri_adp
+        FROM cerere_adoptie
+        WHERE data_cerere >= data_inceput AND data_cerere <= data_sfarsit;
+    
+        return cereri_adp;
+        
+    END cereri_adoptie_tdo;
+    --TO_DATE('10-MAR-2021','dd-MON-yyyy'), TO_DATE('01-JUN-2021','dd-MON-yyyy')
+    
+    PROCEDURE sterge_cereri(cod cerere_adoptie.id_cerere_adoptie%TYPE) AS
+    BEGIN 
+       DELETE FROM cereri_realizate 
+       WHERE id_cerere_adoptie = cod;
+      
+       DELETE FROM cerere_adoptie 
+       WHERE id_cerere_adoptie = cod;
+    END sterge_cereri;
+    
+    PROCEDURE status (cod cerere_adoptie.id_cerere_adoptie%TYPE) AS 
+    
+    BEGIN
+        FOR i in (SELECT nume_parinte1, nume_parinte2, data_cerere, id_cerere_adoptie
+                 FROM cerere_adoptie 
+                 WHERE id_cerere_adoptie = cod) LOOP
+                 dbms_output.put_line(i.nume_parinte1 || ', ' || i.nume_parinte2 || ' a/au depus in data de ' || i.data_cerere || ' cererea cu id-ul: ' || i.id_cerere_adoptie); 
+      END LOOP;
+    
+    END;
+    PROCEDURE alegere(data_inceput DATE, data_sfarsit DATE) AS
+     coduri cereri := cereri_adoptie_tdo(data_inceput, data_sfarsit);
+     Idx PLS_INTEGER := coduri.FIRST();
+    BEGIN
+     IF EXTRACT(YEAR FROM SYSDATE ) - EXTRACT (YEAR FROM data_sfarsit) < 3 THEN 
+       WHILE Idx IS NOT NULL LOOP
+          status (coduri(Idx));
+         Idx := coduri.NEXT(Idx);
+      END LOOP;
+     ELSE 
+         WHILE Idx IS NOT NULL LOOP
+          sterge_cereri(coduri(Idx));
+         Idx := coduri.NEXT(Idx);
+        END LOOP;
+    END IF; 
+    END alegere;
+
+END cerinta14_proiect_tdo;
+
+
+SET SERVEROUT OFF;
+declare
+  nr NUMBER;
+begin
+    SELECT  COUNT(DISTINCT tip_angajat) INTO nr
+            FROM angajat_tdo;
+    FOR i in 1 .. nr LOOP
+        dbms_output.put_line(cerinta14_proiect_tdo.lista_salarii_ang()(i));
+    END LOOP;
+
+ end;
+--115 modificare: salariu = 4095  valori vechi: salariu 3900
+--100 modificare salariu = 4305 comision = 0.4  valori vechi: salariu = 4100  comision = 0.3
+--119 modificare: salariu = 2940 comision = 0.2 valori vechi: salariu = 2800  comision = 0.1
+--102 modificare salariu = 3570 valori vechi: salariu = 3400
+--114 modificare salariu = 3150 valori vechi: salariu = 3000
+EXECUTE cerinta14_proiect_tdo.vechime_ang;
+--rollback
+SELECT * FROM angajat_tdo;
+
+DECLARE 
+ v cerinta14_proiect_tdo.cereri := cerinta14_proiect_tdo.cereri_adoptie_tdo(TO_DATE('10-MAR-2021','dd-MON-yyyy'), TO_DATE('01-JUN-2021','dd-MON-yyyy'));
+BEGIN
+DECLARE 
+Idx PLS_INTEGER := v.FIRST();
+BEGIN
+    WHILE Idx IS NOT NULL LOOP
+        dbms_output.put_line(v(Idx));
+        Idx := v.NEXT(Idx);
+    END LOOP;
+END;
+END;
+
+DELETE FROM  cereri_realizate  WHERE id_cerere_adoptie = 70000;
+SELECT * FROM cerere_adoptie;
+SELECT * FROM cereri_realizate;
+ROLLBACK;
+
+
+execute cerinta14_proiect_tdo.alegere(TO_DATE('10-MAR-2021','dd-MON-yyyy'), TO_DATE('01-JUN-2021','dd-MON-yyyy'));
