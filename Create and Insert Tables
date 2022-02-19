@@ -1,0 +1,302 @@
+
+ CREATE TABLE Locatie_tdo
+ ( id_locatie number(3) constraint pkey_idl primary key, 
+  adresa varchar(100) constraint adresa NOT NULL, 
+  oras varchar2(20) constraint oras NOT NULL, 
+  cod_postal varchar2(6) constraint cod_postal NOT NULL  
+ )
+
+ CREATE TABLE Orfelinat_tdo
+(id_orfelinat number(4) CONSTRAINT pkey_idorf primary key, 
+ nume varchar2(20) constraint nume_O NOT NULL, 
+ id_locatie int, foreign key(id_locatie) references Locatie_tdo(id_locatie), 
+ an_aparitie date default sysdate)
+
+CREATE TABLE ANGAJAT_tdo 
+ (id_angajat number(5) constraint pkey_ang1 primary key, 
+   id_orfelinat int, foreign key(id_orfelinat) references Orfelinat_tdo(id_orfelinat),
+ nume varchar2(20) constraint nume NOT NULL, 
+ prenume varchar2(20) constraint prenume NOT NULL, 
+ tip_angajat varchar2(25) constraint tip_angajat NOT NULL,
+ data_ang date default sysdate,
+ salariu number(6,0) constraint sal NOT NULL,
+ comision number(2,2)
+ )
+ 
+
+CREATE TABLE Sponsor  
+(id_sponsor number(3) Constraint pkey_idsp primary key,  
+ nume varchar2(60) constraint nume_sp NOT NULL,  
+ unique(nume), 
+ id_orfelinat int, foreign key(id_orfelinat) references Orfelinat_tdo(id_orfelinat), 
+ contact varchar(30) constraint phone_nb NOT NULL,  
+ suma_anuala int constraint suma NOT NULL 
+)
+
+
+ CREATE TABLE Istoric_Adoptii_tdo
+( id_adoptii number(3) constraint pkey_idad primary key,
+  id_orfelinat int, foreign key(id_orfelinat) references Orfelinat_tdo(id_orfelinat),
+  data_adoptie date default sysdate,
+  nume_prenume_copil varchar2(100) constraint numec NOT NULL,
+  nume_parinti varchar2(100) constraint numep NOT NULL,
+  contact varchar(30)
+ )
+
+
+
+
+ CREATE TABLE Cerere_Adoptie  
+( id_cerere_adoptie number(5) constraint pkey_idc primary key,  
+  nume_parinte1 varchar2(100) constraint numep1 NOT NULL, 
+  nume_parinte2 varchar2(100),  
+  job_p1 varchar2(30) constraint job1 NOT NULL, 
+  job_p2 varchar2(30), 
+  contact varchar(30), 
+  data_cerere date default sysdate )
+
+ CREATE TABLE Cereri_Realizate 
+( id_realizare number(7) constraint pkey_ir primary key,  
+ id_orfelinat int, foreign key(id_orfelinat) references Orfelinat_tdo(id_orfelinat),  
+ id_cerere_adoptie int, foreign key(id_cerere_adoptie) references Cerere_Adoptie (id_cerere_adoptie) ) 
+ 
+
+CREATE TABLE Orfani_tdo
+(id_orfan number(4) constraint pkey_idof primary key,
+  id_orfelinat int, foreign key(id_orfelinat) references Orfelinat_tdo(id_orfelinat),
+  nume_o varchar2(50) constraint nume_o_c NOT NULL,
+   prenume_o varchar2(50) constraint prenume_o_c NOT NULL,
+  data_nastere_orf date,
+  data_sosire date constraint data_sosire_orf NOT NULL,
+  nr_camera number(3) constraint nr_camera_orf NOT NULL
+)
+
+CREATE TABLE Istoric_Familii_tdo
+(id_istoric number(5) constraint pkey_ist primary key,
+ id_orfan int, foreign key(id_orfan) references Orfani_tdo(id_orfan),
+ id_locatie int, foreign key(id_locatie) references Locatie_tdo(id_locatie), 
+ nume_fam varchar2(60) ,
+ cauza character(400) ,
+ contact varchar(30)
+)
+
+CREATE TABLE Gardian_tdo
+( id_gardian number(3) constraint pkey_idI primary key,
+  id_orfelinat int, foreign key(id_orfelinat) references Orfelinat_tdo(id_orfelinat),
+  nume VARCHAR2(50) constraint nume_g NOT NULL,
+  prenume VARCHAR2(50) constraint prenume_g NOT NULL,
+  data_angajarii date default  sysdate
+)
+
+CREATE TABLE Activitati_tdo
+(id_activ number(2) constraint pkey_idact primary key,
+ denumire varchar2(20) constraint denimre_a NOT NULL,
+ puncte number(3)
+)
+
+CREATE TABLE Participa_tdo (
+    id_participare number(3) primary key,
+    ora_inceput varchar(10) check( '11:00'<ora_inceput AND '17:01' >ora_inceput),
+    timp_alocat number(1) check( timp_alocat <4),
+    zi_desfasurare date default sysdate,
+    id_orfan int, foreign key(id_orfan) references Orfani_tdo(id_orfan),
+    id_gardian int, foreign key (id_gardian) references Gardian_tdo (id_gardian),
+    id_activ int, foreign key (id_activ) references Activitati_tdo (id_activ)
+    )
+
+--DROP TABLE Locatie_tdo;
+--DROP TABLE Orfelinat_tdo;
+--DROP TABLE Angajat_tdo;
+--DROP TABLE Istoric_Adoptii_tdo;
+--DROP TABLE Istoric_Familii_tdo;
+--DROP TABLE Orfani_tdo;
+--DROP TABLE Orfani_tdo;
+--DROP TABLE Participa_tdo;
+--DROP TABLE Activitati_tdo;
+--DROP TABLE Gardian_tdo;
+
+--Inserare de elemente
+
+
+INSERT INTO Locatie_tdo VALUES (1,'Arad, Str. Independentei, nr, 20', 'Arad','31738');
+INSERT INTO Locatie_tdo VALUES (2,'Arad, Str. Mihai Viteazu, bl A1, sc. 2, nr 20', 'Arad','31738');
+INSERT INTO Locatie_tdo VALUES (3,'Bihor, Str. Davila, bl. C2, sc. 1, ap. 2', 'Oradea','41001');
+INSERT INTO Locatie_tdo VALUES (4,'Olt, Str. Fericirii, nr. 47', 'Slatina','23002');
+INSERT INTO Locatie_tdo VALUES (5,'Dolj, Str. Ulmului, nr. 19', 'Craiova','20008');
+INSERT INTO Locatie_tdo VALUES (6,'Dolj, Str. Iorga Nicolae, bl. A1, sc. 3', 'Craiova','20008');
+INSERT INTO Locatie_tdo VALUES (7,'Sibiu, Str. Somesului, nr. 29', 'Sibiu','55003');
+INSERT INTO Locatie_tdo VALUES (8,'Sibiu, Str. Rennes, nr. 21', 'Sibiu','55003');
+INSERT INTO Locatie_tdo VALUES (9,'Dambovita, Str. Independentei, nr. 20', 'Targoviste','13002');
+INSERT INTO Locatie_tdo VALUES (10,'Arges, Str. Stefan cel Mare, nr. 20', 'Poienarii de Arges','11757');
+INSERT INTO Locatie_tdo VALUES (11,'Ilfov, Str. A.I. Cuza, nr. 7', 'Silistea Snagovului', '07711');
+INSERT INTO Locatie_tdo VALUES (12,'Brasov, Str. A.I. Cuza, nr. 19', 'Brasov', '50002');
+INSERT INTO Locatie_tdo VALUES (13,'Dolj, Str. A.I. Cuza, nr. 35', 'Craiova', '20008');
+INSERT INTO Locatie_tdo VALUES (14,'Constanta, Str. Marinei, nr. 56', 'Mangalia', '90550');
+INSERT INTO Locatie_tdo VALUES (15,'Constanta, Str. Arcului, nr. 2-T', 'Constanta', '90003');
+INSERT INTO Locatie_tdo VALUES (16,'Klosterstrase, 120,6100 Seefeld', 'Tirol',321717);
+INSERT INTO Locatie_tdo VALUES (17,'Constanta, Str. 1 Mai, nr. 45', 'Mangalia',905500);
+INSERT INTO Locatie_tdo VALUES (19,'Sibiu, Str. 1 Mai, nr. 28', 'Sibiu',550003);
+--Select *
+--From Locatie_tdo;
+
+INSERT INTO Orfelinat_tdo VALUES(1111,'Alice in Wonderland', 5, TO_DATE('20-JUN-2007','dd-MON-yyyy'));
+INSERT INTO Orfelinat_tdo VALUES(1112,'Sunny', 15, TO_DATE('12-OCT-2012','dd-MON-yyyy'));
+INSERT INTO Orfelinat_tdo VALUES(1113, 'Wonderland',7, TO_DATE('25-JUN-2015','dd-MON-yyyy'));
+INSERT INTO Orfelinat_tdo VALUES(1114,'Happiness',2, TO_DATE('01-JUN-2018','dd-MON-yyyy'));
+INSERT INTO Orfelinat_tdo VALUES(1115,'Life',12, TO_DATE('14-SEP-2010','dd-MON-yyyy'));
+--Select *
+--From Orfelinat_tdo;
+
+INSERT INTO ANGAJAT_tdo VALUES(100, 1111, 'Soran','Aniela-Maria','Asistent Social', TO_DATE('20-SEP-2012','dd-MON-yyyy'));
+INSERT INTO ANGAJAT_tdo VALUES(101, 1111, 'Soran','Radu','Bucatar', TO_DATE('15-JUN-2018','dd-MON-yyyy'));
+INSERT INTO ANGAJAT_tdo VALUES(102, 1114, 'Olaru','Leonardo','Psiholog', TO_DATE('15-JUN-2018','dd-MON-yyyy'));
+INSERT INTO ANGAJAT_tdo VALUES(103, 1114, 'Boboc','Edward','Paznic', TO_DATE('02-JUN-2018','dd-MON-yyyy'));
+INSERT INTO ANGAJAT_tdo VALUES(104, 1112, 'Salau','Sorana','Educator', TO_DATE('20-OCT-2012','dd-MON-yyyy'));
+INSERT INTO ANGAJAT_tdo VALUES(105, 1115, 'Han','Lee','Asistent', TO_DATE('02-NOV-2010','dd-MON-yyyy'));
+INSERT INTO ANGAJAT_tdo VALUES(106, 1112, 'Soava','Raluca','Bucatar', TO_DATE('18-SEP-2016','dd-MON-yyyy'));
+INSERT INTO ANGAJAT_tdo VALUES(107, 1115, 'Dona','Stefan','Educator', TO_DATE('23-FEB-2015','dd-MON-yyyy'));
+
+INSERT INTO ANGAJAT_tdo VALUES (108, 1112, 'Roman', 'Razvan','Asistent Social'	TO_DATE('23-SEP-14','dd-MON-yyyy'), 4150, 0.3);
+INSERT INTO ANGAJAT_tdo VALUES (109, 1114, 'Coman', 'Roland','Bucatar', TO_DATE('15-JUN-18','dd-MON-yyyy'), 3200, NULL);
+INSERT INTO ANGAJAT_tdo VALUES (110, 1111, 'Velu', 'Amanda', 'Psiholog',TO_DATE('15-JUN-08','dd-MON-yyyy'), 3500, 0.3);
+INSERT INTO ANGAJAT_tdo VALUES (111, 1111, 'Voicu', 'Andrei', 'Paznic',	TO_DATE('02-JUL-11','dd-MON-yyyy'), 3330, 0.2);
+INSERT INTO ANGAJAT_tdo VALUES (112, 1111, 'Voicu', 'Catalina',	'Educator', TO_DATE('20-OCT-10','dd-MON-yyyy'), 4300, 0.3);
+INSERT INTO ANGAJAT_tdo VALUES (113, 1114, 'Murad', 'Ahmet', 'Asistent', TO_DATE('05-SEP-20','dd-MON-yyyy'), 4200, NULL);
+INSERT INTO ANGAJAT_tdo VALUES (114, 1114, 'Savulescu',	'Adela', 'Bucatar', TO_DATE('18-FEB-19','dd-MON-yyyy'), 3000, NULL);
+INSERT INTO ANGAJAT_tdo VALUES (115, 1114, 'Nuca', 'Valentin', 'Educator', TO_DATE('10-FEB-19','dd-MON-yyyy'), 3900, NULL);
+INSERT INTO ANGAJAT_tdo VALUES (116, 1112, 'Muresan', 'Gabriel', 'Psiholog',	TO_DATE('23-AUG-16','dd-MON-yyyy'), 3500, 0.2 );
+INSERT INTO ANGAJAT_tdo VALUES (117, 1112, 'Neagu',  'Adelin',	'Paznic', TO_DATE('02-JUL-16','dd-MON-yyyy'), 2830, 0.1);
+INSERT INTO ANGAJAT_tdo VALUES (118, 1115, 'Toma', 'Zelda', 'Psiholog',	TO_DATE('04-SEP-13','dd-MON-yyyy'), 4000, 0.2);
+INSERT INTO ANGAJAT_tdo VALUES (119, 1115, 'Barbu', 'Mihai-Andrei', 'Paznic',	TO_DATE('02-OCT-14','dd-MON-yyyy'), 2800, 0.1);
+--Select * From ANGAJAT_tdo;
+
+
+
+ INSERT INTO Sponsor VALUES(25,'Cama Anita', 1111, '+40799009878', 4000);
+ INSERT INTO Sponsor VALUES(30,'Paun Marius', 1112, 'paun_marius2@yahoo.com', 5000);
+ INSERT INTO Sponsor VALUES(35,'Lumea Jucariilor', 1112, '+40222231313', 9000);
+ INSERT INTO Sponsor VALUES(40,'Ahbab Omar', 1113, '+40700911498', 3000);
+ INSERT INTO Sponsor VALUES(55,'Edu Class', 1115, 'edu_class@edu.ro', 9900 );
+ INSERT INTO Sponsor VALUES(60,'Raftul de Carti', 1113, '+40112902242', 4505);
+INSERT INTO Sponsor VALUES(65,'Hainute si Culori', 1114, '+03334421998', 10000);
+
+--Select * From Sponsor 
+
+INSERT INTO Istoric_Adoptii_tdo VALUES(300, 1111, TO_DATE('25-SEP-2020','dd-MON-yyyy'), 'Coma Vlad' , 'mama: Dima Andreea, tata: Dima George', 'dima16@gmail.com'); 
+INSERT INTO Istoric_Adoptii_tdo VALUES(301, 1112, TO_DATE('04-JAN-2011','dd-MON-yyyy'), 'Davidescu Georgiana - Maria', 'tata: Doncea Gabriel, mama: Stancu Doncea Ana', '+40798876009'); 
+INSERT INTO Istoric_Adoptii_tdo VALUES(303,1113, TO_DATE('09-MAY-2021','dd-MON-yyyy'), 'Achim Geanina', 'mama: Achim Dorina, tata: Achim Leonard', '+40252788999');
+
+INSERT INTO Istoric_Adoptii_tdo VALUES(305, 1112, TO_DATE('25-APR-2017','dd-MON-yyyy'), 'Boboc Stefan', 'mama: Anastasiu Andrada', 'anastasiu_andra110@yahoo.com');
+INSERT INTO Istoric_Adoptii_tdo VALUES(307, 1115, TO_DATE('25-APR-2017','dd-MON-yyyy'), 'Giura Magdalena', 'mama: Osan Alina, tata: Osan Andrei', 'osanAlina00@gmail.com');
+INSERT INTO Istoric_Adoptii_tdo VALUES(309, 1114, TO_DATE('29-NOV-2020','dd-MON-yyyy'), 'Bica Maria-Adriana','mama: Burcea Ana-Maria, tata: Burcea Adrian',  '+40798456672');
+INSERT INTO Istoric_Adoptii_tdo VALUES(311, 1111, TO_DATE('19-MAR-2021','dd-MON-yyyy'), 'Natan Louise', 'mama: Sava Lorena, tata: Sava Alex', 'sava-loredana1980@gmail.com');
+INSERT INTO Istoric_Adoptii_tdo VALUES(313, 1113, TO_DATE('07-MAR-2019','dd-MON-yyyy'), 'Neagu Anastasia - Georgiana', 'mama: Atanasie Monica, tata: Atanasie Mihai', '+3900908864');
+--Select * From Istoric_Adoptii_tdo
+--COMMIT
+
+
+
+INSERT INTO Cerere_Adoptie VALUES(70000,'Cioban Ana-Maria', NULL, 'arhitect', NULL, '+40799998763', TO_DATE('25-SEP-2021','dd-MON-yyyy'));
+INSERT INTO Cerere_Adoptie VALUES(70001,'Lavon Valeria', 'Lavon Gabriel', 'profesor universitar', 'antropolog', 'lavon_gabi@gmail.com', TO_DATE('04-JAN-2021','dd-MON-yyyy'));
+INSERT INTO Cerere_Adoptie VALUES(70002,'Paun Aniela', 'Paun Andrei', 'auditor', 'asistent social', '+0723123998', TO_DATE('09-MAY-2021','dd-MON-yyyy'));
+INSERT INTO Cerere_Adoptie VALUES(70003,'Ciobotaru Selena', 'Arnaut Eduard', 'bijutier', 'designer de bijuterii', '+40709678763', TO_DATE('09-SEP-2021','dd-MON-yyyy'));
+INSERT INTO Cerere_Adoptie VALUES(70004,'Popescu Adrian', NULL, 'jurnalist', NULL, '+07889778998', TO_DATE('29-MAY-2021','dd-MON-yyyy'));
+INSERT INTO Cerere_Adoptie VALUES(70005,'Olaru Margote', NULL, 'diplomat', NULL, '+0724513998', TO_DATE('09-JUN-2021','dd-MON-yyyy'));
+INSERT INTO Cerere_Adoptie VALUES(70006,'Iovan Magdalena', 'Iovan Sebastian', 'logoped', 'medic pediatru', '+0251513998', TO_DATE('30-AUG-2021','dd-MON-yyyy'));
+
+---SELECT * FROM cerere_adoptie;
+
+
+INSERT INTO Cereri_Realizate VALUES(1500, 1111, 70000);
+INSERT INTO Cereri_Realizate VALUES(1501, 1112, 70000);
+INSERT INTO Cereri_Realizate VALUES(1502, 1115, 70000);
+INSERT INTO Cereri_Realizate VALUES(1503, 1112, 70001);
+INSERT INTO Cereri_Realizate VALUES(1504, 1113, 70001);
+INSERT INTO Cereri_Realizate VALUES(1505, 1112, 70002);
+INSERT INTO Cereri_Realizate VALUES(1506, 1112, 70003);
+INSERT INTO Cereri_Realizate VALUES(1507, 1114, 70004);
+INSERT INTO Cereri_Realizate VALUES(1508, 1114, 70005);
+INSERT INTO Cereri_Realizate VALUES(1509, 1115, 70006);
+INSERT INTO Cereri_Realizate VALUES(1510, 1113, 70006);
+INSERT INTO Cereri_Realizate VALUES(1511, 1113, 70005);
+INSERT INTO Cereri_Realizate VALUES(1512, 1114, 70002);
+INSERT INTO Cereri_Realizate VALUES(1513, 1111, 70004);
+
+--- Select * From Cereri_Realizate;
+
+INSERT INTO Orfani_tdo VALUES (3000, 1111, 'Adamescu', 'Valentin', TO_DATE('07-MAR-2012','dd-MON-yyyy'),TO_DATE('10-OCT-2015','dd-MON-yyyy'),20);
+INSERT INTO Orfani_tdo VALUES (3001, 1111, 'Adamescu', 'Ioana-Andreea', TO_DATE('22-OCT-2010','ddMON-yyyy'),TO_DATE('10-OCT-2015','dd-MON-yyyy'),20);
+INSERT INTO Orfani_tdo VALUES (3002, 1112, 'Giura', 'Eden', TO_DATE('07-NOV-2016','dd-MON-yyyy'),TO_DATE('10-MAR-2017','dd-MON-yyyy'),10);
+INSERT INTO Orfani_tdo VALUES (3003, 1113, 'Zubarev', 'Anna', TO_DATE('18-JUN-2009','dd-MON-yyyy'),TO_DATE('19-SEP-2014','dd-MON-yyyy'),36); 
+INSERT INTO Orfani_tdo VALUES (3004, 1114, 'Osun', 'Laur-Adrian', TO_DATE('10-JUL-2015','dd-MON-yyyy'),TO_DATE('22-SEP-2019','dd-MON-yyyy'),97); 
+INSERT INTO Orfani_tdo VALUES (3005, 1113, 'Balan', 'Valeria', TO_DATE('01-JUN-2005','dd-MON-yyyy'),TO_DATE('22-DEC-2011','dd-MON-yyyy'),36); 
+INSERT INTO Orfani_tdo VALUES (3006, 1115, 'Nanu', 'Matei', TO_DATE('14-FEB-2009','dd-MON-yyyy'),TO_DATE('19-JUN-2014','dd-MON-yyyy'),12);
+INSERT INTO Orfani_tdo VALUES (3007, 1112, 'Zabava', 'Constantin-Adrian', TO_DATE('07-APR-2011','dd-MON-yyyy'), TO_DATE('05-SEP-2016','dd-MON-yyyy'),03); 
+INSERT INTO Orfani_tdo VALUES (3008, 1115, 'Costin', 'Angela', TO_DATE('10-AUG-2014','dd-MON-yyyy'), TO_DATE('15-JUL-2020','dd-MON-yyyy'),08); 
+--Select * From Orfani_tdo;
+
+INSERT INTO Istoric_Familii_tdo VALUES(11221, 3000,8,'Adamescu','In urma unui accident mama copiilor si-a 
+pierdut viata.Deoarece bunicii materni nu au putut avea grija de ei datorita varstei inaintate, iar tatal locuieste in Istanbul copilul a intrat in grija statului. Alte rude nu mai exista, din cele stiute pana in acest moment. Contactul apartine bunicilor', '+0251226178');
+
+INSERT INTO Istoric_Familii_tdo VALUES(11222, 3001,8,'Adamescu','In urma unui accident mama copiilor si-a pierdut viata. Deoarece bunicii materni nu au putut avea grija de ei datorita varstei inaintate, iar tatal locuieste in Istanbul, 
+ambii frati au intrat in grija statului. Alte rude nu mai exista, din cele stiute pana in acest moment. Contactul apartine bunicilor', '+0251226178');
+
+INSERT INTO Istoric_Familii_tdo VALUES(11223, 3003, 10, 'Zubarev', 'Deoarece ambii parinti au fost gasiti vinovati de abuz emotional
+in ceea ce priveste propriul copil, acestia au cazut din drepturile parintesti. Alti membri ai familiei nu exista, pe langa o matusa care locuieste in Austria', '+4391813339121');
+
+INSERT INTO Istoric_Familii_tdo VALUES(11224, 3002,11,'Giura','La cateva luni dupa nastere mama a lasat copilul pe scarile orfelinatului. La cateva luni dupa aceasta fapta, aceasta a venit si a marturisit ca nu are situatia materiala necesara pentru a 
+avea grija de el. Nu se cunoaste tatal. Nu exista bunici materni.', NULL);
+
+INSERT INTO Istoric_Familii_tdo VALUES(11225, 3004,13,'Osun','Parinti divortati, legal in grija ii apartinuse tatalui, care in prezent savarseste o pedeapsa de 10 ani. Mama a parasit tara in urma cu 4 ani si prea multe date 
+despre noua ei viata nu se cunosc.Bunicii paterni locuiesc in Pakistan.Contactul este al avocatului dlui Osun.', ' +0786990889');
+
+INSERT INTO Istoric_Familii_tdo VALUES(11226, 3005, 16, 'Tafta', 'Ambii parinti au decedat in 2009, in urma unui incediu, acesta ramanand in grija matusii de pe linie materna. Datorita modului in care si-a tratat nepotul, femeia a fost decazuta din dreptul de a avea grija de acesta. ', NULL);
+
+INSERT INTO Istoric_Familii_tdo VALUES(11227, 3008, 17, 'Costin', ' Lasat in grija bunicilor de catre mama, acesta a ajuns in centrul de plasament in momentul trecerii in nefiinta a bunicului. Nu se cunoaste tatal. Mama nu mai poate fi contactata. Alti membri ai familiei nu se cunosc.' , NULL);
+
+--SELECT * From Istoric_Familii_tdo;
+
+INSERT INTO Gardian_tdo  VALUES(555,1111, 'Arnaut', 'Gabriela', TO_DATE('01-JUL-2006','dd-MON-yyyy') );
+INSERT INTO Gardian_tdo  VALUES(556,1112, 'Popescu', 'Georgiana', TO_DATE('01-JUL-2003','dd-MON-yyyy') );
+INSERT INTO Gardian_tdo  VALUES(557,1113, 'Manta', 'George', TO_DATE('29-NOV-2010','dd-MON-yyyy') );
+INSERT INTO Gardian_tdo  VALUES(558,1114, 'Apostol', 'Gabriel-Dumitru', TO_DATE('20-APR-2017','dd-MON-yyyy') );
+INSERT INTO Gardian_tdo  VALUES(559,1115, 'Baracuda', 'Ozana', TO_DATE('11-MAY-2013','dd-MON-yyyy') );
+INSERT INTO Gardian_tdo  VALUES(560,1111, 'Manole', 'Iuliana-Oana', TO_DATE('01-NOV-2006','dd-MON-yyyy') );
+INSERT INTO Gardian_tdo  VALUES(561,1113, 'Vasiliche', 'Dragos', TO_DATE('01-APR-2014','dd-MON-yyyy') );
+INSERT INTO Gardian_tdo  VALUES(562,1114, 'Cioroboiu', 'Smaranda', TO_DATE('21-NOV-2008','dd-MON-yyyy') );
+
+--SELECT * FROM Gardian_tdo;
+
+INSERT INTO Activitati_tdo VALUES(40,'echitatie',25);
+INSERT INTO Activitati_tdo VALUES(41,'balet',20);
+INSERT INTO Activitati_tdo VALUES(42,'fotografie',10);
+INSERT INTO Activitati_tdo VALUES(43,'pictura',18);
+INSERT INTO Activitati_tdo VALUES(44,'sah',15);
+INSERT INTO Activitati_tdo VALUES(45,'baschet',15);
+INSERT INTO Activitati_tdo VALUES(46,'cercetari in natura',19);
+INSERT INTO Activitati_tdo VALUES(47,'canotaj',10);
+
+--SELECT * FROM Activitati_tdo
+
+CREATE SEQUENCE SEQ_IdParticipare
+INCREMENT by 2
+START WITH 775
+MAXVALUE 999
+NOCYCLE;
+
+INSERT INTO Participa_tdo VALUES(SEQ_IdParticipare.NEXTVAL,'13:05',1,TO_DATE('01-MAR-2021','ddMON-yyyy'),3000,555,44);
+INSERT INTO Participa_tdo VALUES(SEQ_IdParticipare.NEXTVAL,'14:30',2,TO_DATE('01-MAR-2021','ddMON-yyyy'),3000,560,45);
+INSERT INTO Participa_tdo VALUES(SEQ_IdParticipare.NEXTVAL,'15:05',1,TO_DATE('22-APR-2021','ddMON-yyyy'),3002,556,43);
+INSERT INTO Participa_tdo VALUES(SEQ_IdParticipare.NEXTVAL,'14:45',1,TO_DATE('01-MAY-2021','ddMON-yyyy'),3000,555,45);
+INSERT INTO Participa_tdo VALUES(SEQ_IdParticipare.NEXTVAL,'12:05',2,TO_DATE('23-FEB-2021','ddMON-yyyy'),3005,557,40);
+INSERT INTO Participa_tdo VALUES(SEQ_IdParticipare.NEXTVAL,'13:55',2,TO_DATE('18-FEB-2021','ddMON-yyyy'),3006,559,44);
+INSERT INTO Participa_tdo VALUES(SEQ_IdParticipare.NEXTVAL,'16:00',1,TO_DATE('18-FEB-2021','ddMON-yyyy'),3004,558,42);
+INSERT INTO Participa_tdo VALUES(SEQ_IdParticipare.NEXTVAL,'12:05',2,TO_DATE('16-APR-2021','ddMON-yyyy'),3008,559,41);
+INSERT INTO Participa_tdo VALUES(SEQ_IdParticipare.NEXTVAL,'15:20',1,TO_DATE('16-APR-2021','ddMON-yyyy'),3003,557,45);
+INSERT INTO Participa_tdo VALUES(SEQ_IdParticipare.NEXTVAL,'12:25',2,TO_DATE('10-MAR-2021','ddMON-yyyy'),3001,555,43);
+INSERT INTO Participa_tdo VALUES(SEQ_IdParticipare.NEXTVAL,'13:40',1,TO_DATE('10-MAR-2021','ddMON-yyyy'),3007,556,45);
+INSERT INTO Participa_tdo VALUES(SEQ_IdParticipare.NEXTVAL,'14:25',2,TO_DATE('25-MAR-2021','ddMON-yyyy'),NULL,NULL,43);
+INSERT INTO Participa_tdo VALUES(SEQ_IdParticipare.NEXTVAL,'13:40',1,TO_DATE('29-JAN-2021','ddMON-yyyy'),NULL,NULL,45);
+
+--SELECT * FROM Participa_tdo
+
