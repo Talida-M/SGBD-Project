@@ -1,0 +1,199 @@
+--11. Definiti un trigger de tip LMD la nivel de comanda. Declansati trigger-ul.
+--Cerinta: Declansati un trigger care nu va permite inserarea a mai mult de 4 activitati intr-o zi si a mai mult de 3 activitati pentru un copil.
+--De asemenea nu se va permite stergerea activitatilor realizate sub un an (exceptie cele care au inserate NULL la id_orfan).
+--Nu se va permite a se face  update pentru coloanele id_orfan si id_gardian.
+--DECLARE cod_orfan orfani_tdo.id_orfan%TYPE  END;
+CREATE OR REPLACE TRIGGER administreaza_activitati_tdo
+    BEFORE INSERT OR UPDATE OR DELETE ON participa_tdo  FOR EACH ROW
+   DECLARE 
+        numara_activ NUMBER;
+        numar_participare_copil NUMBER;
+        an NUMBER;
+        cod orfani_tdo.id_orfan%TYPE;
+        
+   BEGIN
+   IF INSERTING THEN
+          SELECT  COUNT( id_activ ) INTO numara_activ
+          FROM participa_tdo
+          WHERE zi_desfasurare = :NEW.zi_desfasurare;
+          
+        
+          SELECT count(id_orfan) INTO numar_participare_copil
+          FROM participa_tdo
+          WHERE  id_orfan = :NEW.id_orfan and zi_desfasurare = :NEW.zi_desfasurare;
+           
+           IF numara_activ > 4 and numar_participare_copil < 2 THEN
+                RAISE_APPLICATION_ERROR(-20000, ' S-a atins limita numarului de activitati care se pot desfasura zilnic. Faceti programarea pentru o alta zi ');
+          ELSIF numara_activ < 4  and numar_participare_copil > 2 THEN
+                RAISE_APPLICATION_ERROR(-20001, ' Limita de doua activitati zilnice pe copil a fost depasita ');
+         ELSIF numara_activ > 4 and numar_participare_copil > 2 THEN
+                RAISE_APPLICATION_ERROR(-20003, 'Atat numarul de activitati desfasurate cat numarul participarii per copil a fost depasita');
+        
+           END IF;
+    ELSIF DELETING THEN
+        IF (EXTRACT(YEAR FROM SYSDATE) - EXTRACT(YEAR FROM :OLD.zi_desfasurare)) < 1 AND :OLD.id_orfan IS NOT NULL THEN 
+            RAISE_APPLICATION_ERROR(-20004, 'Nu putem sterge aceasta inregistrare');
+        END IF;
+    ELSIF UPDATING THEN 
+        IF :NEW.id_orfan <> :OLD.id_orfan OR :NEW.id_gardian <> :OLD.id_gardian THEN 
+            RAISE_APPLICATION_ERROR(-20005, 'Nu putem face update  id-urilor participantilor');
+        END IF;
+     END IF;
+   END;
+
+----------TEST DELETE
+DELETE FROM participa_tdo WHERE id_participare = 821;
+DELETE FROM participa_tdo WHERE id_participare = 799; -- se va sterge deoarece desi nu are o vechime mai mare de un an, aceasta are trecut la id_orfan NULL
+-------------TEST INSERT
+BEGIN
+     FOR i in  40 .. 46 LOOP
+        INSERT INTO Participa_tdo VALUES(SEQ_IdParticipare.NEXTVAL,'13:05',1,TO_DATE('20-OCT-2021','dd-MON-yyyy'),3002,555,i,'?');
+    END LOOP;
+END;
+---Test pe UPDATE
+UPDATE participa_tdo
+SET id_gardian = 556
+WHERE id_participare = 821;
+------------------------------------------------
+SELECT * FROM participa_tdo;
+ROLLBACK;
+/
+
+
+
+
+DROP TRIGGER administreaza_activitati_tdo;
+--SELECT * FROM Participa_tdo;
+
+----------------------------------
+SELECT USER FROM sys.dual;
+--12 Aceasta baza de date este controlata doar de catre admini, restul nu pot face modificari asupra ei. Astfel, sa se creeze un trigger LDD care nu va 
+---lasa alt utilizator decat adminii sa faca aceste schimbari (pentru baza noastra de date admin este 
+-- tali). Atunci cand se va face ALTER pe tabelul ORFANI_TDO se va apela si procedura afiseaza_ag care va seta suma punctajelor obtinute 
+ --in urma participarilor la activitati, pentru toti orfani care nu au punctajul pe activitati setat.
+--Pentru a ne asigura ca functioneza puneti aceste date in tabelul administrare_modificari
+--(va trebui mai intai creat)
+CREATE TABLE administrare_modificari ( admin_ VARCHAR(50),
+                                       tip_modificare VARCHAR(25),
+                                       tabel_modificat VARCHAR(30),
+                                       data_modificare DATE,
+                                       status_modf VARCHAR(30) );
+                                     --  DROP TABLE administrare_modificari;
+CREATE OR REPLACE TRIGGER modificari 
+        BEFORE CREATE OR DROP OR ALTER ON SCHEMA
+BEGIN 
+    IF USER <> 'TALI' THEN
+        INSERT INTO administrare_modificari VALUES(SYS.LOGIN_USER, SYS.SYSEVENT, SYS.DICTIONARY_OBJ_NAME, SYSDATE, 'ESEC');
+        RAISE_APPLICATION_ERROR(-20010, 'Nu sunteti admin! Nu puteti face modificari asupra tabelelor.');
+
+    END IF;
+   
+    IF SYSEVENT = 'ALTER' AND DICTIONARY_OBJ_NAME = 'ORFANI_TDO' THEN
+        FOR i IN 3000 .. 3008 LOOP
+             IF orfani_tdo.punctaj_total <> 0 THEN
+                afiseaza_ag(i);
+            END IF;
+        END LOOP;
+        INSERT INTO administrare_modificari VALUES(SYS.LOGIN_USER, SYS.SYSEVENT, SYS.DICTIONARY_OBJ_NAME, SYSDATE, 'Procedura rulata cu succes');
+    ELSE
+     INSERT INTO administrare_modificari VALUES(SYS.LOGIN_USER, SYS.SYSEVENT, SYS.DICTIONARY_OBJ_NAME, SYSDATE, 'SUCCES');
+    END IF;
+END;
+
+EXECUTE afiseaza_ag(3001);
+--SELECT OBJECT_NAME FROM
+--	SYS.ALL_OBJECTS
+--WHERE
+--	UPPER(OBJECT_TYPE) = 'PROCEDURE' AND OWNER = 'TALI' ;
+CREATE TABLE Orfelinat2(nume VARCHAR(100));
+ALTER TABLE orfani_tdo ADD gen VARCHAR(10);
+ALTER TABLE orfani_tdo ADD punctaj_total NUMBER;
+--DROP TRIGGER modificari;
+--UPDATE  Participa_tdo
+--SET status_activitate = 'REALIZATA'
+--WHERE id_orfan IS NOT NULL AND id_gardian IS NOT NULL;
+--ALTER TABLE orfani_tdo DROP COLUMN gen;-- FROM orfani_tdo
+-- SELECT * FROM administrare_modificari;
+--    SELECT * FROM orfani_tdo;
+--    ROLLBACK;
+--UPDATE orfani_tdo
+--SET punctaj_total = 0;
+
+DELETE  FROM  administrare_modificari;
+
+--10. Cu ajutorul unui trigger LMD la nivel de comanda sa se verifice daca anumite evenimentele  se pot realiza. 
+-- Astfel avem urmatoarele reguli la care triggerul se va declansa:
+            --- ~ nu putem avea angajat nou cu comision (in INSERT)
+            --- ~ angajatului nou i se va adauga la comision si o steluta (NULL*) pentru a arata ca are o vechime < 1 an
+            --- ~ nu putem face update cu un salariu < 3000 pentru persoanele care lucreaza ca Psiholog, Educator sau Asistent Social
+            ---- ~ nu putem adauga comision unei persoane cu o vechime < 1 si nu putem scadea la 0.1 sau sub 0.1 angajatilor cu o vechime > 10 ani
+---IN PLUS! Atunci cand facem update la salariu se va chema procedura de la exercitiul 7 pentru a vedea cum s-a modificat rangul salariilor.          
+
+CREATE OR REPLACE TRIGGER cerinta10_tdo  AFTER
+    INSERT OR UPDATE  ON angajat_tdo 
+DECLARE
+
+    numar NUMBER := 0;
+    numar_salarii NUMBER;
+    nr_comision_gresit NUMBER;
+    
+BEGIN
+    IF INSERTING  THEN 
+        
+        SELECT COUNT(*)  INTO numar
+        FROM angajat_tdo
+        WHERE data_ang = SYSDATE and comision IS NULL;
+        
+        IF numar = 1 THEN
+           RAISE_APPLICATION_ERROR(-20018,'Noii angajati nu pot avea comision!');
+        END IF;
+
+
+            UPDATE  angajat_tdo
+            SET comision = CONCAT('NULL', '*')
+            WHERE  data_ang = SYSDATE and comision IS NULL;
+
+
+        
+    ELSIF UPDATING THEN
+        
+        SELECT COUNT(*) INTO  numar_salarii
+        FROM angajat_tdo 
+        WHERE salariu < 3000 AND (tip_angajat = 'Educator' OR tip_angajat = 'Psiholog'  OR tip_angajat = 'Asistent Social');
+         
+        IF numar_salarii = 1 THEN
+            RAISE_APPLICATION_ERROR(-20002,'Nu putem scadea salariul angajatului la acea suma!');
+        END IF;
+        SELECT COUNT(*) INTO nr_comision_gresit
+        FROM angajat_tdo
+        WHERE EXTRACT (YEAR FROM SYSDATE) - EXTRACT (YEAR FROM data_ang)  > 10 and comision <= 0.1;
+        
+        IF  nr_comision_gresit = 1 THEN
+                 RAISE_APPLICATION_ERROR(-20019,'Nu putem scadea comisionul angajatului sub 0.1 datorita vechimii!');
+        END IF;
+        
+       SELECT COUNT(*) INTO nr_comision_gresit
+        FROM angajat_tdo
+        WHERE EXTRACT (YEAR FROM SYSDATE) - EXTRACT (YEAR FROM data_ang)  <= 1 and comision >= 0.1;
+        
+        
+        IF nr_comision_gresit = 1 THEN
+                RAISE_APPLICATION_ERROR(-20020,'Angajatii cu doar un an vechime nu pot avea comision!');
+        END IF;
+                   
+   END IF;
+
+END;
+---DECLANSRE TRIGGER;
+--TEST TRIGGER PE INSERT
+insert INTO ANGAJAT_tdo VALUES (120, 1115, 'Barbu', 'Miruna', 'Psiholog',	TO_DATE('28-DEC-2021','dd-MON-yyyy'), 3200, 0.1);
+
+---TEST TRIGGER PE UPDATE
+UPDATE angajat_tdo
+SET comision = 0.2, salariu = 3600
+WHERE id_angajat = 116;
+
+
+--ROLLBACK
+SELECT * FROM angajat_tdo;
+DROP TRIGGER cerinta11_tdo;
